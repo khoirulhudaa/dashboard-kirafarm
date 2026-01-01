@@ -372,7 +372,7 @@ export default function ProductManagement() {
   return (
     <div className="p-0 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
-        Manajemen Penjualan Produk
+        Manajemen Produk
       </h1>
 
       {/* BAGIAN FILTER */}

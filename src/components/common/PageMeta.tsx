@@ -1,7 +1,7 @@
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
 const PageMeta = ({
-  title,
+  title='KIRAFARM',
   description,
 }: {
   title?: string;
