@@ -7,7 +7,7 @@ import TopProductsChart from "../../components/lapas/topProduk";
 export default function Home() {
   return (
     <>
-      <PageMeta title="AgroMart" description="Sistem Manajemen Penjualan Produk Pertanian & Peternakan" />
+      <PageMeta title="KIRAFARM" description="Sistem Manajemen Penjualan Produk Pertanian & Peternakan" />
       <div className="gap-4 md:gap-6 space-y-6">
         {/* Metrics */}
         <div className="col-span-12">
