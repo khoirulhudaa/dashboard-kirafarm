@@ -3,15 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 
 import {
   BarChart3,
+  ChevronDown,
   Home,
   Package,
-  Scale,
   ShoppingCart,
-  Tags,
   UserCircle,
-  Users,
-  ChevronDown,
-  LayoutGrid
+  Users
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import {
@@ -101,8 +98,9 @@ const AppSidebar: React.FC = () => {
   const currentUser = getCurrentUser();
   const userRoleNormalized = (currentUser?.role || "ADMIN").toUpperCase();
 
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [subMenuHeight, setSubMenuHeight] = useState<any>({});
+  const subMenuRefs = useRef<any>({});
+  console.log('subMenuHeight', subMenuHeight)
 
   const filteredNavItems = allNavItems.filter((item) => {
     if (!item.roles) return true;
@@ -146,7 +144,7 @@ const AppSidebar: React.FC = () => {
       const key = `main-${openSubmenu}`;
       const el = subMenuRefs.current[key];
       if (el) {
-        setSubMenuHeight((prev) => ({
+        setSubMenuHeight((prev: any) => ({
           ...prev,
           [key]: el.scrollHeight,
         }));
@@ -209,8 +207,12 @@ const AppSidebar: React.FC = () => {
 
             {/* Submenu Area */}
             {hasSubItems && (isExpanded || isHovered || isMobileOpen) && (
-              <div
-                ref={(el) => (subMenuRefs.current[`main-${nav.name}`] = el)}
+             <div
+                ref={(el) => {
+                  if (el) {
+                    subMenuRefs.current[`main-${nav.name}`] = el;
+                  }
+                }}
                 className="overflow-hidden transition-all duration-300 ease-in-out"
                 style={{
                   // Logika: Tetap buka jika state openSubmenu sesuai, atau jika ada child yang aktif
