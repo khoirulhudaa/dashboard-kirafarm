@@ -14,6 +14,7 @@ import SalesReport from "./pages/Sales";
 import SalesManagement from "./pages/Transcation";
 import UnitManagement from "./pages/Unit";
 import UserProfiles from "./pages/UserProfiles";
+import StockOpname from "./pages/Stok";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/penjualan" element={<SalesManagement />} />
             <Route path="/manajemen-pegawai" element={<EmployeeManagement />} />
             <Route path="/pelanggan" element={<CustomerManagement />} />
+            <Route path="/stok-opname" element={<StockOpname />} />
             <Route path="/laporan" element={<SalesReport />} />
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/blank" element={<Blank />} />

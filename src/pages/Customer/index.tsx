@@ -185,7 +185,7 @@ export default function CustomerManagement() {
 
       {/* Filter & Search */}
       <div className="mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+        <div className="grid grid-cols-2 md:flex flex-col lg:flex-row gap-4 items-start lg:items-end">
           <div className="relative flex-1">
             <Label>Cari Pelanggan</Label>
             <Search className="absolute left-3 top-[calc(50%+0.75rem)] -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -201,7 +201,7 @@ export default function CustomerManagement() {
             <Label className="opacity-0">Tambah</Label>
             <button
               onClick={() => openEditDrawer()}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition w-full lg:w-auto"
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition w-full lg:w-auto"
             >
               <Plus className="w-5 h-5" />
               Tambah Pelanggan
@@ -256,18 +256,18 @@ export default function CustomerManagement() {
                       key={c.id}
                       className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
-                      <td className="py-4 px-6 font-medium">{c.name}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300 font-medium">{c.name}</td>
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <p className="font-medium">{c.phone}</p>
                         {c.email && (
                           <p className="text-sm text-gray-500">{c.email}</p>
                         )}
                       </td>
-                      <td className="py-4 px-6 font-medium">
+                      <td className="py-4 px-6 dark:text-gray-300 font-medium">
                         {formatCurrency(c.totalPurchases)}
                       </td>
-                      <td className="py-4 px-6">{c.lastPurchase}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300">{c.lastPurchase}</td>
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => openDetailDrawer(c)}
@@ -341,16 +341,16 @@ export default function CustomerManagement() {
         <div className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-lg bg-white dark:bg-gray-900 shadow-xl h-full overflow-y-auto">
             <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Detail Pelanggan</h2>
+              <h2 className="text-2xl font-bold dark:text-gray-300">Detail Pelanggan</h2>
               <button
                 onClick={() => setIsDetailDrawerOpen(false)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
               >
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6 dark:text-gray-300" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 dark:text-gray-300">
               <div>
                 <Label>Nama Pelanggan</Label>
                 <p className="text-lg font-medium">{selectedCustomer.name}</p>

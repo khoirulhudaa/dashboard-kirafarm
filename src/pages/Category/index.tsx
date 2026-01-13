@@ -135,7 +135,7 @@ export default function CategoryManagement() {
 
       {/* Filter & Search */}
       <div className="mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+        <div className="grid grid-cols-2 md:flex flex-col lg:flex-row gap-4 items-start lg:items-end">
           <div className="flex-1">
             <Label htmlFor="search">Cari Kategori</Label>
             <div className="relative">
@@ -155,7 +155,7 @@ export default function CategoryManagement() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-800"
+              className="w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-800 dark:text-gray-300"
             >
               <option value="">Semua Status</option>
               <option value="ACTIVE">Aktif</option>
@@ -167,12 +167,23 @@ export default function CategoryManagement() {
             <Label className="opacity-0">Tambah</Label>
             <button
               onClick={() => openEditDrawer()}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition w-full lg:w-auto"
+              className="hidden md:flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition w-full lg:w-auto"
             >
               <Plus className="w-5 h-5" />
               Tambah Kategori
             </button>
           </div>
+        </div>
+
+        <div>
+          <Label className="opacity-0">Tambah</Label>
+          <button
+            onClick={() => openEditDrawer()}
+            className="mt-[-56px] md:hidden flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition w-full lg:w-auto"
+          >
+            <Plus className="w-5 h-5" />
+            Tambah Kategori
+          </button>
         </div>
 
         {(searchTerm || filterStatus) && (
@@ -206,7 +217,7 @@ export default function CategoryManagement() {
                 <tbody>
                   {currentData.map((cat) => (
                     <tr key={cat.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="py-4 px-6 font-medium">{cat.name}</td>
+                      <td className="py-4 px-6 font-medium dark:text-gray-300">{cat.name}</td>
                       <td className="py-4 px-6 text-gray-600 dark:text-gray-400">{cat.description || "-"}</td>
                       <td className="py-4 px-6">
                         <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${

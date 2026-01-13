@@ -242,8 +242,8 @@ export default function SalesManagement() {
 
       {/* Search & Filter */}
       <div className="mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-          <div className="flex-1">
+        <div className="grid grid-cols-2 md:flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+          <div className="md:flex-1">
             <Label>Cari Transaksi</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -272,12 +272,19 @@ export default function SalesManagement() {
 
           <button
             onClick={openAddDrawer}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+            className="md:w-max w-full hidden md:flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
           >
             <Plus className="w-5 h-5" />
             Transaksi Baru
           </button>
         </div>
+          <button
+            onClick={openAddDrawer}
+            className="md:w-max w-full mt-3 md:hidden flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+          >
+            <Plus className="w-5 h-5" />
+            Transaksi Baru
+          </button>
       </div>
 
       {/* Tabel */}
@@ -303,11 +310,11 @@ export default function SalesManagement() {
                 <tbody>
                   {currentData.map((sale) => (
                     <tr key={sale.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                      <td className="py-4 px-6 font-medium">{sale.invoiceNumber}</td>
-                      <td className="py-4 px-6 text-sm">{formatDate(sale.date)}</td>
-                      <td className="py-4 px-6">{sale.customerName}</td>
-                      <td className="py-4 px-6 font-semibold">{formatCurrency(sale.totalAmount)}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 dark:text-gray-300 px-6 font-medium">{sale.invoiceNumber}</td>
+                      <td className="py-4 dark:text-gray-300 px-6 text-sm">{formatDate(sale.date)}</td>
+                      <td className="py-4 dark:text-gray-300 px-6">{sale.customerName}</td>
+                      <td className="py-4 dark:text-gray-300 px-6 font-semibold">{formatCurrency(sale.totalAmount)}</td>
+                      <td className="py-4 dark:text-gray-300 px-6">
                         <span
                           className={`px-3 py-1 text-xs font-medium rounded-full ${
                             sale.status === "PAID"
@@ -379,7 +386,7 @@ export default function SalesManagement() {
 
       {/* Detail Drawer */}
       {isDetailDrawerOpen && selectedSale && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 flex justify-end">
+        <div className="fixed inset-0 z-[9999999999] bg-black/60 flex justify-end">
           <div className="w-full max-w-3xl bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-2xl">
             <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-2xl font-bold">Detail Penjualan</h2>
@@ -392,7 +399,7 @@ export default function SalesManagement() {
             </div>
 
             <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 dark:text-gray-300 md:grid-cols-2 gap-6">
                 <div>
                   <Label>Nomor Invoice</Label>
                   <p className="text-lg font-semibold">{selectedSale.invoiceNumber}</p>
@@ -427,23 +434,23 @@ export default function SalesManagement() {
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th className="py-3 px-4 text-left text-sm font-medium">Produk</th>
-                        <th className="py-3 px-4 text-center text-sm font-medium">Harga</th>
-                        <th className="py-3 px-4 text-center text-sm font-medium">Jumlah</th>
-                        <th className="py-3 px-4 text-right text-sm font-medium">Subtotal</th>
+                        <th className="py-3 px-4 dark:text-gray-300 text-left text-sm font-medium">Produk</th>
+                        <th className="py-3 px-4 dark:text-gray-300 text-center text-sm font-medium">Harga</th>
+                        <th className="py-3 px-4 dark:text-gray-300 text-center text-sm font-medium">Jumlah</th>
+                        <th className="py-3 px-4 dark:text-gray-300 text-right text-sm font-medium">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedSale.items.map((item, idx) => (
                         <tr key={idx} className="border-t dark:border-gray-700">
-                          <td className="py-3 px-4">{item.productName}</td>
-                          <td className="py-3 px-4 text-center">{formatCurrency(item.price)}</td>
-                          <td className="py-3 px-4 text-center">{item.quantity}</td>
-                          <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.subtotal)}</td>
+                          <td className="py-3 px-4 dark:text-gray-300">{item.productName}</td>
+                          <td className="py-3 px-4 dark:text-gray-300 text-center">{formatCurrency(item.price)}</td>
+                          <td className="py-3 px-4 dark:text-gray-300 text-center">{item.quantity}</td>
+                          <td className="py-3 px-4 dark:text-gray-300 text-right font-medium">{formatCurrency(item.subtotal)}</td>
                         </tr>
                       ))}
                       <tr className="border-t-2 font-bold bg-gray-50 dark:bg-gray-800">
-                        <td colSpan={3} className="py-4 px-4 text-right text-lg">Total</td>
+                        <td colSpan={3} className="py-4 px-4 text-right text-lg dark:text-gray-300">Total</td>
                         <td className="py-4 px-4 text-right text-xl text-blue-600">
                           {formatCurrency(selectedSale.totalAmount)}
                         </td>

@@ -53,7 +53,7 @@ const options: ApexOptions = {
   },
   grid: { borderColor: "#e2e8f0" },
   title: {
-    text: "Overview Stok Produk Saat Ini",
+    text: "",
     align: "center",
     style: { fontSize: "18px", fontWeight: 600 },
   },

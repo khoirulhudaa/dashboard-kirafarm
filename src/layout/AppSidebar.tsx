@@ -10,10 +10,11 @@ import {
   Tags,
   UserCircle,
   Users,
+  ChevronDown,
+  LayoutGrid
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import {
-  ChevronDownIcon,
   HorizontaLDots
 } from "../icons";
 
@@ -34,7 +35,7 @@ type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  roles?: string[]; // jika ingin role-based access di masa depan
+  roles?: string[];
   subItems?: {
     name: string;
     path: string;
@@ -44,7 +45,6 @@ type NavItem = {
   }[];
 };
 
-// Daftar menu baru sesuai dengan halaman penjualan produk
 const allNavItems: NavItem[] = [
   {
     icon: <Home className="w-5 h-5" />,
@@ -58,33 +58,26 @@ const allNavItems: NavItem[] = [
   },
   {
     icon: <Package className="w-5 h-5" />,
-    name: "Produk",
-    path: "/manajemen-produk",
-  },
-  {
-    icon: <Tags className="w-5 h-5" />,
-    name: "Kategori",
-    path: "/manajemen-kategori",
-  },
-  {
-    icon: <Scale className="w-5 h-5" />,
-    name: "Satuan",
-    path: "/manajemen-satuan",
+    name: "Inventori",
+    subItems: [
+      { name: "Daftar Produk", path: "/manajemen-produk" },
+      { name: "Stok Opname", path: "/stok-opname" },
+      { name: "Kategori", path: "/manajemen-kategori" },
+      { name: "Satuan", path: "/manajemen-satuan" },
+    ],
   },
   {
     icon: <Users className="w-5 h-5" />,
-    name: "Pelanggan",
-    path: "/pelanggan",
+    name: "Manajemen",
+    subItems: [
+      { name: "Data Pelanggan", path: "/pelanggan" },
+      { name: "Data Pegawai", path: "/manajemen-pegawai" },
+    ],
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,
     name: "Laporan",
     path: "/laporan",
-  },
-  {
-    icon: <Users className="w-5 h-5" />,
-    name: "Pegawai",
-    path: "/manajemen-pegawai",
   },
   {
     icon: <UserCircle className="w-5 h-5" />,
@@ -106,15 +99,11 @@ const AppSidebar: React.FC = () => {
 
   const location = useLocation();
   const currentUser = getCurrentUser();
-
-  // Normalisasi role (untuk masa depan jika pakai RBAC)
   const userRoleNormalized = (currentUser?.role || "ADMIN").toUpperCase();
 
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Saat ini tidak ada filter role, semua menu ditampilkan
-  // Jika ingin RBAC, cukup tambahkan properti roles di allNavItems
   const filteredNavItems = allNavItems.filter((item) => {
     if (!item.roles) return true;
     return item.roles.some(
@@ -128,36 +117,30 @@ const AppSidebar: React.FC = () => {
   );
 
   const handleMenuClick = () => {
-    if (isMobileOpen) {
-      toggleMobileSidebar();
-    }
-    if (!isExpanded && isHovered) {
-      setIsHovered(false);
-    }
+    if (isMobileOpen) toggleMobileSidebar();
+    if (!isExpanded && isHovered) setIsHovered(false);
   };
 
-  // Auto-open submenu jika salah satu subitem aktif
   useEffect(() => {
     let matchedSubmenu: string | null = null;
 
     filteredNavItems.forEach((nav) => {
       if (nav.subItems) {
-        nav.subItems.forEach((subItem) => {
-          if (isActive(subItem.path)) {
-            matchedSubmenu = nav.name;
-          }
-        });
+        const hasActiveChild = nav.subItems.some((sub) => location.pathname === sub.path);
+        if (hasActiveChild) {
+          matchedSubmenu = nav.name;
+        }
       }
-    });
+  });
 
-    if (matchedSubmenu && openSubmenu !== matchedSubmenu) {
-      toggleSubmenu(matchedSubmenu);
-    } else if (!matchedSubmenu && openSubmenu) {
-      toggleSubmenu(openSubmenu);
-    }
-  }, [location.pathname, isActive, openSubmenu, toggleSubmenu, filteredNavItems]);
-
-  // Update tinggi submenu saat dibuka
+  // Hanya jalankan toggle jika menu yang aktif belum terbuka
+  if (matchedSubmenu && openSubmenu !== matchedSubmenu) {
+    toggleSubmenu(matchedSubmenu);
+  }
+  // HAPUS bagian 'else if (!matchedSubmenu && openSubmenu)' 
+  // agar menu tidak tertutup otomatis saat navigasi ke halaman tanpa submenu.
+}, [location.pathname]);
+  // Hitung tinggi untuk animasi transisi slide-down
   useEffect(() => {
     if (openSubmenu) {
       const key = `main-${openSubmenu}`;
@@ -172,74 +155,50 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const renderMenuItems = (items: NavItem[]) => (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col gap-2">
       {items.map((nav) => {
         const isSubmenuOpen = openSubmenu === nav.name;
         const hasSubItems = !!nav.subItems;
 
-        // Filter subitems (jika ada role di masa depan)
-        const visibleSubItems = nav.subItems?.filter((sub) => {
-          if (!sub.roles) return true;
-          return sub.roles.some(
-            (allowedRole) => allowedRole.toUpperCase() === userRoleNormalized
-          );
-        });
-
-        // Jika parent punya subitems tapi tidak ada yang visible → sembunyikan
-        if (hasSubItems && (!visibleSubItems || visibleSubItems.length === 0)) {
-          return null;
-        }
+        // Cek apakah ada anak yang aktif
+        const hasActiveChild = nav.subItems?.some(sub => isActive(sub.path));
 
         return (
           <li key={nav.name}>
-            {hasSubItems && visibleSubItems && visibleSubItems.length > 0 ? (
+            {hasSubItems ? (
               <button
-                onClick={() => toggleSubmenu(nav.name)}
-                className={`menu-item group ${
-                  isSubmenuOpen ? "menu-item-active" : "menu-item-inactive"
-                } cursor-pointer ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "lg:justify-start"
-                }`}
+                type="button" // Pastikan type button agar tidak trigger submit form
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleSubmenu(nav.name);
+                }}
+                className={`menu-item group w-full ${
+                  isSubmenuOpen || hasActiveChild ? "menu-item-active" : "menu-item-inactive"
+                } ${!isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"}`}
               >
-                <span
-                  className={`menu-item-icon-size ${
-                    isSubmenuOpen
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
+                <span className={`menu-item-icon-size ${(isSubmenuOpen || hasActiveChild) ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="menu-item-text">{nav.name}</span>
-                )}
-                {(isExpanded || isHovered || isMobileOpen) && (
-                  <ChevronDownIcon
-                    className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                      isSubmenuOpen ? "rotate-180 text-brand-500" : ""
-                    }`}
-                  />
+                  <>
+                    <span className="menu-item-text">{nav.name}</span>
+                    <ChevronDown
+                      className={`ml-auto w-4 h-4 transition-transform duration-200 ${
+                        isSubmenuOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </>
                 )}
               </button>
             ) : (
               <Link
                 to={nav.path!}
                 className={`menu-item group ${
-                  isActive(nav.path!)
-                    ? "menu-item-active"
-                    : "menu-item-inactive"
+                  isActive(nav.path!) ? "menu-item-active" : "menu-item-inactive"
                 }`}
                 onClick={handleMenuClick}
               >
-                <span
-                  className={`menu-item-icon-size ${
-                    isActive(nav.path!)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
+                <span className={`menu-item-icon-size ${isActive(nav.path!) ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
                   {nav.icon}
                 </span>
                 {(isExpanded || isHovered || isMobileOpen) && (
@@ -248,53 +207,35 @@ const AppSidebar: React.FC = () => {
               </Link>
             )}
 
-            {/* Submenu */}
-            {hasSubItems &&
-              visibleSubItems &&
-              visibleSubItems.length > 0 &&
-              (isExpanded || isHovered || isMobileOpen) && (
-                <div
-                  ref={(el: any) =>
-                    (subMenuRefs.current[`main-${nav.name}`] = el)
-                  }
-                  className="overflow-hidden transition-all duration-300"
-                  style={{
-                    height: isSubmenuOpen
-                      ? `${subMenuHeight[`main-${nav.name}`] || 0}px`
-                      : "0px",
-                  }}
-                >
-                  <ul className="mt-2 space-y-1 ml-9">
-                    {visibleSubItems.map((subItem) => (
-                      <li key={subItem.name}>
-                        <Link
-                          to={subItem.path}
-                          className={`menu-dropdown-item ${
-                            isActive(subItem.path)
-                              ? "menu-dropdown-item-active"
-                              : "menu-dropdown-item-inactive"
-                          }`}
-                          onClick={handleMenuClick}
-                        >
-                          {subItem.name}
-                          <span className="flex items-center gap-1 ml-auto">
-                            {subItem.new && (
-                              <span className="menu-dropdown-badge menu-dropdown-badge-inactive">
-                                new
-                              </span>
-                            )}
-                            {subItem.pro && (
-                              <span className="menu-dropdown-badge menu-dropdown-badge-inactive">
-                                pro
-                              </span>
-                            )}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {/* Submenu Area */}
+            {hasSubItems && (isExpanded || isHovered || isMobileOpen) && (
+              <div
+                ref={(el) => (subMenuRefs.current[`main-${nav.name}`] = el)}
+                className="overflow-hidden transition-all duration-300 ease-in-out"
+                style={{
+                  // Logika: Tetap buka jika state openSubmenu sesuai, atau jika ada child yang aktif
+                  height: isSubmenuOpen ? `${subMenuRefs.current[`main-${nav.name}`]?.scrollHeight}px` : "0px",
+                }}
+              >
+                <ul className="mt-1 ml-9 flex flex-col gap-1 border-l border-gray-100 dark:border-gray-800">
+                  {nav.subItems?.map((subItem) => (
+                    <li key={subItem.name}>
+                      <Link
+                        to={subItem.path}
+                        className={`menu-dropdown-item py-2 px-3 rounded-md text-sm block transition-colors ${
+                          isActive(subItem.path)
+                            ? "text-brand-600 bg-brand-50 dark:bg-brand-900/20 font-medium"
+                            : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-300"
+                        }`}
+                        onClick={handleMenuClick} // Menutup sidebar di mobile setelah klik
+                      >
+                        {subItem.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </li>
         );
       })}
@@ -313,50 +254,24 @@ const AppSidebar: React.FC = () => {
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div
-        className={`py-6 border-b border-gray-200 w-full flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
+        onMouseEnter={() => !isExpanded && setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <Link to="/" onClick={handleMenuClick}>
-          {isExpanded || isHovered || isMobileOpen ? (
-            <div className="flex items-center gap-3 w-full">
-              <a href="https://www.flaticon.com/free-icons/vegetable" title="vegetable icons">
-                <img src="/logo.png" className="h-[30px] text-white dark:text-blue-400" /> {/* Icon perisai melambangkan integritas & pemasyarakatan */}
-              </a>
-              <span className="relative top-[1px] font-bold text-xl text-gray-900 dark:text-white">
-                KiraFarm
-              </span>
-            </div>
-          ) : (
-            <img src="/logo.png" alt="Logo" className="w-10 h-10" />
+      <div className={`py-6 border-b border-gray-100 dark:border-gray-800 w-full flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"}`}>
+        <Link to="/" onClick={handleMenuClick} className="flex items-center gap-3">
+          <img src="/logo.png" alt="Logo" className="w-8 h-8 flex-shrink-0" />
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <span className="font-bold text-xl tracking-tight dark:text-white">KiraFarm</span>
           )}
         </Link>
       </div>
 
-      <div className="flex flex-col overflow-y-auto duration-300 pt-8 ease-linear no-scrollbar flex-1">
+      <div className="flex flex-col overflow-y-auto pt-6 no-scrollbar flex-1">
         <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu Utama"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
-              </h2>
-              {renderMenuItems(filteredNavItems)}
-            </div>
-          </div>
+          <h2 className={`mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 ${!isExpanded && !isHovered ? "text-center" : "px-2"}`}>
+            {isExpanded || isHovered || isMobileOpen ? "Menu Utama" : <HorizontaLDots className="w-5 h-5 mx-auto" />}
+          </h2>
+          {renderMenuItems(filteredNavItems)}
         </nav>
       </div>
     </aside>

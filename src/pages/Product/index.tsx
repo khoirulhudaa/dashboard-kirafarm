@@ -424,7 +424,7 @@ export default function ProductManagement() {
               <Label className="opacity-0">Placeholder untuk align</Label>
               <button
                 onClick={() => openEditDrawer()}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap"
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 md:mt-0 mt-[-20px] hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap"
               >
                 <Plus className="w-5 h-5" />
                 Tambah Produk

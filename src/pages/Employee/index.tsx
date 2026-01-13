@@ -237,8 +237,8 @@ export default function EmployeeManagement() {
       {/* Filter & Search */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-            <div>
+          <div className="grid md:grid-cols-2 grid-cols-2 gap-4 w-full">
+            <div className="w-full">
               <Label htmlFor="role">Role</Label>
               <Select
                 options={[
@@ -249,11 +249,12 @@ export default function EmployeeManagement() {
                   { value: "WAREHOUSE", label: "Gudang" },
                 ]}
                 defaultValue={filterRole}
+                className="flex-1"
                 onChange={(v) => setFilterRole(v as any)}
                 placeholder="Pilih role"
               />
             </div>
-            <div>
+            <div className="w-full">
               <Label htmlFor="status">Status</Label>
               <Select
                 options={[
@@ -264,11 +265,12 @@ export default function EmployeeManagement() {
                 defaultValue={filterStatus}
                 onChange={(v) => setFilterStatus(v as any)}
                 placeholder="Pilih status"
+                className="w-full"
               />
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+          <div className="grid grid-cols-2 md: flex-col sm:flex-row gap-4 w-full">
             <div className="relative flex-1">
               <Label>Cari Pegawai</Label>
               <Search className="absolute left-3 top-[calc(50%+0.75rem)] -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -283,7 +285,7 @@ export default function EmployeeManagement() {
               <Label className="opacity-0">Tambah</Label>
               <button
                 onClick={() => openEditDrawer()}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap"
+                className="w-full flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap"
               >
                 <Plus className="w-5 h-5" />
                 Tambah Pegawai
@@ -331,20 +333,20 @@ export default function EmployeeManagement() {
                 <tbody>
                   {currentData.map((emp) => (
                     <tr key={emp.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="py-4 px-6 font-medium">{emp.name}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300 font-medium">{emp.name}</td>
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <div className="text-sm">
                           <p>{emp.email}</p>
                           <p className="text-gray-500">{emp.phone}</p>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <span className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                           {roleLabels[emp.role]}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-sm">{formatDate(emp.joinDate)}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300 text-sm">{formatDate(emp.joinDate)}</td>
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <span className={`px-3 py-1 text-xs rounded-full ${
                           emp.status === "ACTIVE"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
@@ -353,7 +355,7 @@ export default function EmployeeManagement() {
                           {emp.status === "ACTIVE" ? "Aktif" : "Tidak Aktif"}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 dark:text-gray-300">
                         <div className="flex items-center gap-3">
                           <button onClick={() => openDetailDrawer(emp)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
                             <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -413,23 +415,23 @@ export default function EmployeeManagement() {
         <div className="fixed inset-0 z-[999999] bg-black/60 flex justify-end">
           <div className="w-full max-w-md bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-xl">
             <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Detail Pegawai</h2>
+              <h2 className="text-2xl font-bold dark:text-gray-300">Detail Pegawai</h2>
               <button onClick={() => setIsDetailDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded">
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6 dark:text-gray-300" />
               </button>
             </div>
             <div className="p-6 space-y-6">
-              <div><Label>Nama Lengkap</Label><p className="text-lg font-medium">{selectedEmployee.name}</p></div>
-              <div><Label>Email</Label><p className="text-lg">{selectedEmployee.email}</p></div>
-              <div><Label>Telepon</Label><p className="text-lg">{selectedEmployee.phone}</p></div>
+              <div><Label>Nama Lengkap</Label><p className="text-lg dark:text-gray-300 font-medium">{selectedEmployee.name}</p></div>
+              <div><Label>Email</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.email}</p></div>
+              <div><Label>Telepon</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.phone}</p></div>
               <div><Label>Role</Label>
                 <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                   {roleLabels[selectedEmployee.role]}
                 </span>
               </div>
-              <div><Label>Tanggal Bergabung</Label><p className="text-lg">{formatDate(selectedEmployee.joinDate)}</p></div>
+              <div><Label>Tanggal Bergabung</Label><p className="text-lg dark:text-gray-300">{formatDate(selectedEmployee.joinDate)}</p></div>
               {selectedEmployee.address && (
-                <div><Label>Alamat</Label><p className="text-lg">{selectedEmployee.address}</p></div>
+                <div><Label>Alamat</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.address}</p></div>
               )}
               <div><Label>Status</Label>
                 <span className={`px-3 py-1 text-sm rounded-full ${
