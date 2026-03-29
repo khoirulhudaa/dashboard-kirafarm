@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import {
   ChevronDown,
+  DollarSignIcon,
   Home,
   Package,
   ShoppingCart,
@@ -53,11 +54,16 @@ const allNavItems: NavItem[] = [
     path: "/penjualan",
   },
   {
+    icon: <DollarSignIcon className="w-5 h-5" />,
+    name: "Pencairan dana",
+    path: "/pemintaan-pencairan-dana",
+  },
+  {
     icon: <Package className="w-5 h-5" />,
     name: "Inventori",
     subItems: [
       { name: "Daftar Produk", path: "/manajemen-produk" },
-      // { name: "Stok Opname", path: "/stok-opname" },
+      { name: "Stok Opname", path: "/stok-opname" },
       { name: "Kategori", path: "/manajemen-kategori" },
       { name: "Satuan", path: "/manajemen-satuan" },
     ],

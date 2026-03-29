@@ -12,11 +12,12 @@ import ComponentCard from "../../components/common/ComponentCard";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Select from "../../components/form/Select";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE_URL = "https://be-kirafarm.kiraproject.id/api/products";
 const MY_PRODUCTS_URL = `https://be-kirafarm.kiraproject.id/api/products/my-products`;
 const CAT_API_URL = "https://be-kirafarm.kiraproject.id/api/categories";
-const UNIT_API_URL = "https://be-kirafarm.kiraproject.id/api/units"; // Asumsi endpoint unit
+const UNIT_API_URL = "https://be-kirafarm.kiraproject.id/api/units";
 
 interface Category {
   id: string;
@@ -68,6 +69,8 @@ export default function ProductManagement() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const fetchData = async () => {
     try {
@@ -96,12 +99,12 @@ export default function ProductManagement() {
       };
 
       // Gabungkan URL dengan query parameter
-      const MY_PRODUCTS_WITH_QUERY = `${MY_PRODUCTS_URL}?sellerId=${sellerId}`;
+      const queryParam = `?sellerId=${sellerId}`;
 
       const [resProd, resCat, resUnit] = await Promise.all([
-        fetch(MY_PRODUCTS_WITH_QUERY, { headers }),
-        fetch(CAT_API_URL, { headers }),
-        fetch(UNIT_API_URL, { headers })
+        fetch(`${MY_PRODUCTS_URL}${queryParam}`, { headers }),
+        fetch(`${CAT_API_URL}${queryParam}`, { headers }), // Sekarang memfilter kategori milik seller
+        fetch(`${UNIT_API_URL}${queryParam}`, { headers })  // Sekarang memfilter unit milik seller
       ]);
 
       const jsonProd = await resProd.json();
@@ -134,62 +137,74 @@ export default function ProductManagement() {
     }
   };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-      if (!name || !price || !selectedCategoryId || !selectedUnitId || !code) {
-        toast.error("Mohon lengkapi data wajib!");
-        return;
+    if (!name || !price || !selectedCategoryId || !selectedUnitId || !code) {
+      toast.error("Mohon lengkapi data wajib!");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const formData = new FormData();
+      formData.append("code", code);
+      formData.append("name", name);
+      formData.append("price", price);
+      formData.append("stock", stock || "0");
+      formData.append("description", description);
+      formData.append("origin", origin);
+      formData.append("categoryId", selectedCategoryId);
+      formData.append("unitId", selectedUnitId);
+      
+      if (imageFile) {
+        formData.append("thumbnail", imageFile); 
       }
 
-      try {
-        setIsSubmitting(true);
-        const formData = new FormData();
-        formData.append("code", code);
-        formData.append("name", name);
-        formData.append("price", price);
-        formData.append("stock", stock || "0");
-        formData.append("description", description);
-        formData.append("origin", origin);
-        formData.append("categoryId", selectedCategoryId);
-        formData.append("unitId", selectedUnitId);
-        
-        if (imageFile) {
-          formData.append("thumbnail", imageFile); 
-        }
+      // Gunakan base URL untuk POST/PUT
+      const url = editingProduct ? `${API_BASE_URL}/${editingProduct.id}` : API_BASE_URL;
+      const method = editingProduct ? "PUT" : "POST";
+      const token = localStorage.getItem("accessToken");
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: { 
+          // JANGAN set Content-Type ke multipart/form-data secara manual, 
+          // biarkan browser yang melakukannya otomatis saat mengirim FormData
+          "Authorization": `Bearer ${token}` 
+        },
+        body: formData,
+      });
 
-        // Gunakan base URL untuk POST/PUT
-        const url = editingProduct ? `${API_BASE_URL}/${editingProduct.id}` : API_BASE_URL;
-        const method = editingProduct ? "PUT" : "POST";
-        const token = localStorage.getItem("accessToken");
-        
-        const response = await fetch(url, {
-          method: method,
-          headers: { 
-            // JANGAN set Content-Type ke multipart/form-data secara manual, 
-            // biarkan browser yang melakukannya otomatis saat mengirim FormData
-            "Authorization": `Bearer ${token}` 
-          },
-          body: formData,
-        });
+      const result = await response.json();
 
-        const result = await response.json();
-
-        if (result.success) {
-          toast.success(result.message);
-          setIsEditDrawerOpen(false);
-          fetchData(); 
-          resetForm();
-        } else {
-          // Tampilkan pesan error spesifik dari backend (misal: "Insufficient permissions")
-          toast.error(result.message || "Gagal menyimpan produk");
-        }
-      } catch (error) {
-        toast.error("Terjadi kesalahan sistem");
-      } finally {
-        setIsSubmitting(false);
+      if (result.success) {
+        toast.success(result.message);
+        setIsEditDrawerOpen(false);
+        fetchData(); 
+        resetForm();
+      } else {
+        // Tampilkan pesan error spesifik dari backend (misal: "Insufficient permissions")
+        toast.error(result.message || "Gagal menyimpan produk");
       }
-    };
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteModal = (product: Product) => {
+    setProductToDelete(product);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    await handleDelete(productToDelete.id); // Panggil fungsi delete yang sudah kamu buat
+    setIsDeleteModalOpen(false);
+    setProductToDelete(null);
+  };
 
   const resetForm = () => {
     setName(""); setCode(""); setPrice(""); setStock("");
@@ -304,9 +319,9 @@ export default function ProductManagement() {
                         </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-1">
                         <button onClick={() => openEditDrawer(p)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Edit"><Edit size={18} /></button>
-                        <button onClick={() => handleDelete(p.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition" title="Hapus"><Trash2 size={18} /></button>
+                        <button onClick={() => openDeleteModal(p)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition" title="Hapus"><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
@@ -319,6 +334,62 @@ export default function ProductManagement() {
           </div>
         )}
       </ComponentCard>
+
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            {/* Overlay dengan Blur Tebal (Glassmorphism) */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl"
+            />
+
+            {/* Konten Modal */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ 
+                scale: 1, 
+                opacity: 1, 
+                y: 0,
+                transition: { type: "spring", damping: 25, stiffness: 300 } 
+              }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-lg w-full text-center border border-white/20"
+            >
+              {/* Icon dengan Pulse Effect */}
+              <div className="relative w-24 h-24 mx-auto mb-6">
+                <div className="absolute inset-0 bg-red-100 animate-ping rounded-full opacity-20"></div>
+                <div className="relative w-full h-full bg-red-50 text-red-500 rounded-full flex items-center justify-center border-4 border-white shadow-inner">
+                  <Trash2 size={40} strokeWidth={2.5} />
+                </div>
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Hapus Produk?</h3>
+              <p className="text-gray-500 mb-8 leading-relaxed">
+                Produk <span className="font-semibold text-gray-800">"{productToDelete?.name}"</span> akan dihapus permanen dari sistem Kirafarm.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={confirmDelete}
+                  className="w-full py-4 rounded-2xl font-bold bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-200 active:scale-95 transition-all"
+                >
+                  Ya, Hapus Sekarang
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="w-full py-4 rounded-2xl font-semibold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Batalkan
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* --- DRAWER FORM --- */}
       {isEditDrawerOpen && (

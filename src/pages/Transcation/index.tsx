@@ -90,6 +90,7 @@ export default function SalesManagement() {
   const [inputShipping, setInputShipping] = useState<string>("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const BASE_URL = 'https://be-kirafarm.kiraproject.id'
   const steps = [
@@ -292,6 +293,7 @@ export default function SalesManagement() {
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                       s.status === 'PENDING' ? 'bg-orange-100 text-orange-600' :
                       s.status === 'WAITING_PAYMENT' ? 'bg-yellow-100 text-yellow-700' :
+                      s.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
                       s.status === 'PROCESSING' ? 'bg-blue-100 text-blue-600' :
                       s.status === 'SHIPPED' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'
                     }`}>
@@ -470,114 +472,200 @@ export default function SalesManagement() {
               </div>
 
               {/* ACTION FOOTER */}
-              <div className="p-6 border-t h-max bg-gray-50 flex gap-4">
-                {selectedSale.status === "PENDING" && (
-                  <div className="w-full p-6 border-2 border-blue-600 bg-blue-50 rounded-3xl space-y-4">
-                    <h3 className="text-blue-600 font-black text-xs">Atur Ongkir</h3>
-
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Nominal Ongkir"
-                        value={inputShipping}
-                        onChange={(e: any) => setInputShipping(e.target.value)}
-                      />
-
-                      <button
-                        onClick={() =>
-                          handleUpdateStatus("WAITING_PAYMENT", {
-                            shippingCost: parseFloat(inputShipping)
-                          })
-                        }
-                        className="bg-blue-600 text-white px-6 rounded-xl font-bold"
-                      >
-                        Simpan
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <div className="p-6 border-t bg-gray-50 space-y-4">
                 
-                {selectedSale.status === "WAITING_PAYMENT" && (
-                  <div className="text-center text-yellow-600 font-bold text-sm">
-                    Menunggu pembayaran dari pelanggan...
-                  </div>
-                )}
-
-                {selectedSale.status === "PROCESSING" && (
-                  <div className="p-5 border-2 border-orange-200 bg-orange-50 rounded-3xl space-y-4">
-                    <h3 className="text-orange-600 font-black text-xs">
-                      Verifikasi Timbangan
-                    </h3>
-
-                    {selectedSale.items.map((item) => (
-                      <div key={item.productId} className="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl">
-                        <div>
-                          <Label>Estimasi</Label>
-                          <p className="font-bold">
-                            {item.quantity} {item.unit}
-                          </p>
-                        </div>
-
+                {/* 1. AREA DINAMIS BERDASARKAN STATUS SAAT INI */}
+                <div className="flex flex-col gap-4">
+                  
+                  {/* STATUS: PENDING (Input Ongkir) */}
+                  {selectedSale.status === "PENDING" && (
+                    <div className="w-full p-5 border-2 border-blue-600 bg-blue-50 rounded-3xl space-y-4 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-blue-600 font-black text-xs uppercase">Atur Ongkos Kirim</h3>
+                      </div>
+                      <div className="flex gap-2">
                         <Input
                           type="number"
-                          step="0.01"
-                          value={tempWeights[item.productId] || ""}
-                          onChange={(e: any) =>
-                            setTempWeights((prev) => ({
-                              ...prev,
-                              [item.productId]: parseFloat(e.target.value)
-                            }))
-                          }
+                          placeholder="Masukkan nominal ongkir..."
+                          value={inputShipping}
+                          onChange={(e: any) => setInputShipping(e.target.value)}
+                          className="flex-1"
                         />
+                        <button
+                          disabled={!inputShipping || updateStatusMutation.isPending}
+                          onClick={() =>
+                            handleUpdateStatus("WAITING_PAYMENT", {
+                              shippingCost: parseFloat(inputShipping)
+                            })
+                          }
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-xl font-bold transition-colors disabled:bg-gray-300"
+                        >
+                          {updateStatusMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan"}
+                        </button>
                       </div>
-                    ))}
+                    </div>
+                  )}
 
-                    {/* Tombol untuk lanjut ke SHIPPED */}
+                  {/* STATUS: WAITING PAYMENT */}
+                  {selectedSale.status === "WAITING_PAYMENT" && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-2xl text-center">
+                      <p className="text-yellow-700 font-bold text-sm flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Menunggu Pembayaran Pelanggan...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* STATUS: PROCESSING (Verifikasi Berat/Quantity Riil) */}
+                  {selectedSale.status === "PROCESSING" && (
+                    <div className="p-5 border-2 border-orange-200 bg-orange-50 rounded-3xl space-y-4">
+                      <h3 className="text-orange-600 font-black text-xs uppercase flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" /> Verifikasi Timbangan Akhir
+                      </h3>
+
+                      <div className="space-y-3">
+                        {selectedSale.items.map((item) => (
+                          <div key={item.productId} className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-orange-100">
+                            <div>
+                              <Label className="text-[10px]">Estimasi ({item.unit})</Label>
+                              <p className="font-bold text-gray-700">{item.quantity}</p>
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Berat Riil</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={tempWeights[item.productId] || ""}
+                                onChange={(e: any) =>
+                                  setTempWeights((prev) => ({
+                                    ...prev,
+                                    [item.productId]: parseFloat(e.target.value)
+                                  }))
+                                }
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        disabled={updateStatusMutation.isPending}
+                        onClick={() => {
+                          const finalItems = selectedSale.items.map(item => ({
+                            ...item,
+                            quantity: tempWeights[item.productId] || item.quantity // Override quantity dengan berat riil
+                          }));
+                          handleUpdateStatus("SHIPPED", { items: finalItems });
+                        }}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-orange-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        {updateStatusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Kirim Pesanan (Shipped)"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* STATUS: SHIPPED */}
+                  {selectedSale.status === "SHIPPED" && (
                     <button
-                      onClick={() => {
-                        handleUpdateStatus("SHIPPED", { items: selectedSale.items.map(item => ({
-                          ...item,
-                          actualWeight: tempWeights[item.productId] || item.quantity
-                        })) });
-                      }}
-                      className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black"
+                      disabled={updateStatusMutation.isPending}
+                      onClick={() => handleUpdateStatus("DELIVERED")}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-purple-100 transition-all flex items-center justify-center gap-2"
                     >
-                      Lanjut ke Shipped
+                      {updateStatusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Konfirmasi Sampai (Delivered)"}
                     </button>
-                  </div>
-                )}
+                  )}
 
-                {selectedSale.status === "SHIPPED" && (
+                  {/* STATUS: DELIVERED */}
+                  {selectedSale.status === "DELIVERED" && (
+                    <button
+                      disabled={updateStatusMutation.isPending}
+                      onClick={() => {
+                        if (confirm("Selesaikan transaksi? Saldo akan diteruskan ke seller.")) {
+                          handleUpdateStatus("COMPLETED");
+                        }
+                      }}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-green-100 transition-all flex items-center justify-center gap-2"
+                    >
+                      {updateStatusMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Selesaikan & Cairkan Saldo"}
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. TOMBOL CANCEL (Tampil jika status belum final) */}
+                {!["COMPLETED", "CANCELLED", "EXPIRED"].includes(selectedSale.status) && (
                   <button
-                    onClick={() => handleUpdateStatus("DELIVERED")}
-                    className="flex-1 bg-purple-600 text-white py-4 rounded-2xl font-black"
+                    disabled={updateStatusMutation.isPending}
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="w-full group flex items-center justify-center gap-2 py-3 rounded-2xl text-red-500 font-bold bg-red-100 transition-colors border-2 hover:bg-red-200 border-red-400"
                   >
-                    Konfirmasi Sampai
+                    <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                    Batalkan Pesanan
                   </button>
                 )}
 
-                {selectedSale.status === "DELIVERED" && (
-                  <button
-                    onClick={() => handleUpdateStatus("COMPLETED")}
-                    className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black"
-                  >
-                    Selesaikan Transaksi
-                  </button>
-                )}
-
+                {/* 3. STATUS FINAL (ReadOnly) */}
                 {selectedSale.status === "COMPLETED" && (
-                  <div className="w-full bg-green-100 text-green-700 p-4 rounded-2xl text-center font-black">
-                    TRANSAKSI SELESAI
+                  <div className="w-full bg-green-100 border border-green-200 text-green-700 p-4 rounded-2xl text-center font-black flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" /> TRANSAKSI BERHASIL DISELESAIKAN
                   </div>
                 )}
 
                 {["CANCELLED", "EXPIRED"].includes(selectedSale.status) && (
-                  <div className="w-full bg-red-100 text-red-600 p-4 rounded-2xl text-center font-black">
-                    TRANSAKSI DIBATALKAN / KADALUARSA
+                  <div className="w-full bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-center font-black flex items-center justify-center gap-2">
+                    <X className="w-5 h-5" /> PESANAN INI TELAH DIBATALKAN
                   </div>
                 )}
 
               </div>
+              
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OVERLAY: KONFIRMASI PEMBATALAN */}
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 z-[999999999] flex items-center justify-center p-4">
+          {/* Backdrop Blur */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" 
+            onClick={() => setIsCancelModalOpen(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white dark:bg-gray-900 w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-red-50/50">
+                <X className="w-10 h-10" />
+              </div>
+              
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tighter">
+                Batalkan Pesanan?
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed px-2">
+                Tindakan ini akan menghentikan seluruh proses transaksi. Saldo yang terkait akan dikembalikan/disesuaikan otomatis.
+              </p>
+            </div>
+            
+            <div className="flex border-t border-gray-100">
+              <button 
+                onClick={() => setIsCancelModalOpen(false)}
+                className="flex-1 active:scale-[0.97] py-5 text-sm font-bold text-gray-500 hover:bg-gray-100 transition-colors uppercase tracking-widest"
+              >
+                Kembali
+              </button>
+              <button 
+                onClick={() => {
+                  handleUpdateStatus("CANCELLED");
+                  setIsCancelModalOpen(false);
+                }}
+                className="flex-1 active:scale-[0.97] py-5 text-sm font-black text-red-600 bg-red-100 hover:bg-red-200 border-l border-gray-100 transition-colors uppercase tracking-widest"
+              >
+                Ya, Batalkan
+              </button>
             </div>
           </div>
         </div>

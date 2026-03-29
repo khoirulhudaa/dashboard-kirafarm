@@ -1,44 +1,36 @@
 import { ApexOptions } from "apexcharts";
 import Chart from "react-apexcharts";
 
-// Dummy data produk terlaris
-const topProducts = [
-  { name: "Ayam Kampung", sales: 85 },
-  { name: "Apel Malang", sales: 72 },
-  { name: "Pisang Cavendish", sales: 65 },
-  { name: "Bayam Organik", sales: 58 },
-  { name: "Mangga Arumanis", sales: 48 },
-  { name: "Sapi Potong", sales: 35 },
-];
+export default function TopProductsChart({ sales }: any) {
+  // Hitung agregasi penjualan per produk dari SaleItems
+  const productSales: Record<string, number> = {};
+  
+  sales.forEach((sale: any) => {
+    if (sale.status === 'CANCELLED') return;
+    sale.items?.forEach((item: any) => {
+      const name = item.Product?.name || "Produk Dihapus";
+      productSales[name] = (productSales[name] || 0) + Number(item.quantity);
+    });
+  });
 
-const options: ApexOptions = {
-  chart: { type: "bar", height: 380, fontFamily: "Inter, sans-serif", toolbar: { show: false } },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      borderRadius: 10,
-      barHeight: "70%",
-    },
-  },
-  colors: ["#34d399"],
-  dataLabels: {
-    enabled: true,
-    formatter: val => `${val} unit`,
-    style: { fontSize: "14px", fontWeight: 600 },
-  },
-  xaxis: { categories: topProducts.map(p => p.name), axisBorder: { show: false }, axisTicks: { show: false } },
-  yaxis: { labels: { style: { fontSize: "14px" } } },
-  grid: { borderColor: "#e2e8f0", strokeDashArray: 6 },
-  title: { text: "Produk Terlaris (Unit Terjual)", align: "center", style: { fontSize: "18px", fontWeight: 600 } },
-  tooltip: { y: { formatter: val => `${val} unit terjual` } },
-};
+  const sorted = Object.entries(productSales)
+    .map(([name, qty]) => ({ name, qty }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 6);
 
-const series = [{ name: "Terjual", data: topProducts.map(p => p.sales) }];
+  const options: ApexOptions = {
+    chart: { type: "bar", toolbar: { show: false }, fontFamily: 'inherit' },
+    plotOptions: { bar: { horizontal: true, borderRadius: 8, barHeight: "60%" } },
+    colors: ["#34d399"],
+    dataLabels: { enabled: true, formatter: (v) => `${v} unit` },
+    xaxis: { categories: sorted.map(d => d.name) },
+    title: { text: "Produk Terlaris", style: { fontSize: "16px", fontWeight: 700 } },
+    grid: { strokeDashArray: 4 }
+  };
 
-export default function TopProductsChart() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] shadow-sm">
-      <Chart options={options} series={series} type="bar" height={380} />
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+      <Chart options={options} series={[{ name: "Terjual", data: sorted.map(d => d.qty) }]} type="bar" height={350} />
     </div>
   );
 }

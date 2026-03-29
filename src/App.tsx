@@ -12,10 +12,11 @@ import EmployeeManagement from "./pages/Employee";
 import NotFound from "./pages/OtherPage/NotFound";
 import ProductManagement from "./pages/Product";
 import SalesReport from "./pages/Sales";
-import StockOpname from "./pages/Stok";
+import StockOpnamePage from "./pages/Stok";
 import SalesManagement from "./pages/Transcation";
 import UnitManagement from "./pages/Unit";
 import UserProfiles from "./pages/UserProfiles";
+import WithdrawalManagement from "./pages/withdrawl";
 
 // 1. Inisialisasi QueryClient di luar komponen
 const queryClient = new QueryClient({
@@ -44,9 +45,10 @@ export default function App() {
               <Route path="/manajemen-kategori" element={<CategoryManagement />} />
               <Route path="/manajemen-satuan" element={<UnitManagement />} />
               <Route path="/penjualan" element={<SalesManagement />} />
+              <Route path="/pemintaan-pencairan-dana" element={<WithdrawalManagement />} />
               <Route path="/manajemen-pegawai" element={<EmployeeManagement />} />
               <Route path="/pelanggan" element={<CustomerManagement />} />
-              <Route path="/stok-opname" element={<StockOpname />} />
+              <Route path="/stok-opname" element={<StockOpnamePage />} />
               <Route path="/laporan" element={<SalesReport />} />
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/blank" element={<Blank />} />

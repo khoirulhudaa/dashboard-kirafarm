@@ -6,32 +6,35 @@ import {
   Plus,
   Search,
   X,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 import ComponentCard from "../../components/common/ComponentCard";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Select from "../../components/form/Select";
 
+// --- Interfaces ---
 interface Product {
   id: string;
   code: string;
   name: string;
-  unit: string;
-  currentStock: number;
+  unit?: { name: string };
+  stock: number; // Dari backend field-nya 'stock'
 }
 
 interface StockOpname {
   id: string;
-  date: string; // ISO string
+  createdAt: string; 
   product: Product;
   previousStock: number;
   actualStock: number;
-  difference: number; // actual - previous
+  difference: number;
   adjustmentType: "PLUS" | "MINUS";
   note: string;
-  user: string; // Nama user yang melakukan opname
+  userName: string;
 }
 
 const formatDate = (isoString: string): string => {
@@ -41,160 +44,112 @@ const formatDate = (isoString: string): string => {
   });
 };
 
-const dummyProducts: Product[] = [
-  { id: "1", code: "TRK-001", name: "Sapi Potong", unit: "ekor", currentStock: 10 },
-  { id: "2", code: "TRK-002", name: "Ayam Kampung", unit: "ekor", currentStock: 48 },
-  { id: "4", code: "SYR-001", name: "Bayam Organik", unit: "kg", currentStock: 95 },
-  { id: "7", code: "BUH-001", name: "Apel Malang", unit: "kg", currentStock: 285 },
-];
-
-const dummyStockOpnames: StockOpname[] = [
-  {
-    id: "OPN-001",
-    date: "2025-12-20T14:30:00.000Z",
-    product: dummyProducts[0],
-    previousStock: 12,
-    actualStock: 10,
-    difference: -2,
-    adjustmentType: "MINUS",
-    note: "Hilang 2 ekor karena sakit & mati",
-    user: "Admin",
-  },
-  {
-    id: "OPN-002",
-    date: "2025-12-15T09:15:00.000Z",
-    product: dummyProducts[1],
-    previousStock: 50,
-    actualStock: 48,
-    difference: -2,
-    adjustmentType: "MINUS",
-    note: "Konsumsi internal untuk acara keluarga",
-    user: "Khoirul",
-  },
-  {
-    id: "OPN-003",
-    date: "2025-11-28T16:45:00.000Z",
-    product: dummyProducts[2],
-    previousStock: 100,
-    actualStock: 95,
-    difference: -5,
-    adjustmentType: "MINUS",
-    note: "Rusak karena hujan deras",
-    user: "Admin",
-  },
-  {
-    id: "OPN-004",
-    date: "2025-11-10T11:20:00.000Z",
-    product: dummyProducts[3],
-    previousStock: 280,
-    actualStock: 285,
-    difference: 5,
-    adjustmentType: "PLUS",
-    note: "Tambahan dari supplier (bonus)",
-    user: "Admin",
-  },
-];
-
-export default function StockOpname() {
+export default function StockOpnamePage() {
   const [opnames, setOpnames] = useState<StockOpname[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Drawer states
+  // Drawer & Modal states
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [selectedOpname, setSelectedOpname] = useState<StockOpname | null>(null);
 
-  // Form states for adding new opname
+  // Form states
   const [selectedProductId, setSelectedProductId] = useState("");
   const [actualStock, setActualStock] = useState("");
   const [note, setNote] = useState("");
 
-  // Filter & Search
+  // Filter & Pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterType, setFilterType] = useState("");
-
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  useEffect(() => {
-    // Simulate fetch data
-    setTimeout(() => {
-      setProducts(dummyProducts);
-      setOpnames(dummyStockOpnames);
+  // --- Fetch Data ---
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [prodRes, opnRes] = await Promise.all([
+        fetch("/api/products/my-products"),
+        fetch("/api/stock-opname")
+      ]);
+
+      const prodData = await prodRes.json();
+      const opnData = await opnRes.json();
+
+      if (prodData.success) setProducts(prodData.data);
+      if (opnData.success) setOpnames(opnData.data);
+    } catch (error) {
+      toast.error("Gagal terhubung ke server");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterProduct, filterType]);
-
+  // --- Handlers ---
   const resetForm = () => {
-    setSelectedProductId(products[0]?.id || "");
+    setSelectedProductId("");
     setActualStock("");
     setNote("");
   };
 
-  const openAddDrawer = () => {
-    resetForm();
-    setIsAddDrawerOpen(true);
-  };
-
-  const openDetailDrawer = (opname: StockOpname) => {
-    setSelectedOpname(opname);
-    setIsDetailDrawerOpen(true);
-  };
-
-  const handleSubmitOpname = (e: React.FormEvent) => {
+  const handleSubmitOpname = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!selectedProductId || !actualStock) {
       toast.error("Produk dan stok aktual wajib diisi!");
       return;
     }
 
-    const product = products.find(p => p.id === selectedProductId);
-    if (!product) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/stock-opname", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: selectedProductId,
+          actualStock: Number(actualStock),
+          note: note || "-",
+        }),
+      });
 
-    const prevStock = product.currentStock;
-    const actual = Number(actualStock);
-    const diff = actual - prevStock;
+      const result = await response.json();
 
-    const newOpname: StockOpname = {
-      id: `OPN-${Date.now().toString().slice(-6)}`,
-      date: new Date().toISOString(),
-      product,
-      previousStock: prevStock,
-      actualStock: actual,
-      difference: diff,
-      adjustmentType: diff >= 0 ? "PLUS" : "MINUS",
-      note: note || "-",
-      user: "Khoirul", // nanti ambil dari auth context
-    };
-
-    setOpnames([newOpname, ...opnames]);
-    
-    // Update stok produk (simulasi)
-    setProducts(products.map(p =>
-      p.id === selectedProductId ? { ...p, currentStock: actual } : p
-    ));
-
-    toast.success("Stok opname berhasil disimpan");
-    setIsAddDrawerOpen(false);
-    resetForm();
+      if (result.success) {
+        toast.success("Stok opname berhasil disimpan");
+        setOpnames([result.data, ...opnames]);
+        // Update stok produk lokal agar sinkron
+        setProducts(products.map(p => 
+          p.id === selectedProductId ? { ...p, stock: Number(actualStock) } : p
+        ));
+        setIsAddDrawerOpen(false);
+        resetForm();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan sistem");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Filtering
+  // --- Filtering Logic ---
   const filteredOpnames = opnames.filter((op) => {
-    const matchesSearch =
-      op.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      op.product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      op.note.toLowerCase().includes(searchTerm.toLowerCase());
+    const productName = op.product?.name?.toLowerCase() || "";
+    const productCode = op.product?.code?.toLowerCase() || "";
+    const opNote = op.note?.toLowerCase() || "";
+    
+    const matchesSearch = productName.includes(searchTerm.toLowerCase()) ||
+                         productCode.includes(searchTerm.toLowerCase()) ||
+                         opNote.includes(searchTerm.toLowerCase());
 
-    const matchesProduct = !filterProduct || op.product.id === filterProduct;
+    const matchesProduct = !filterProduct || op.product?.id === filterProduct;
     const matchesType = !filterType || op.adjustmentType === filterType;
 
     return matchesSearch && matchesProduct && matchesType;
@@ -207,356 +162,218 @@ export default function StockOpname() {
 
   return (
     <div className="p-0 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
-        Stok Opname
-      </h1>
+      <header className="mb-8 flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Stok Opname</h1>
+        <button
+          onClick={() => setIsAddDrawerOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg shadow-blue-200 active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          Opname Baru
+        </button>
+      </header>
 
-      {/* FILTER & ADD BUTTON */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 flex-1 w-full md:w-max">
-            <div>
-              <Label htmlFor="product">Produk</Label>
-              <Select
-                options={[
-                  { value: "", label: "Semua Produk" },
-                  ...products.map(p => ({ value: p.id, label: `${p.code} - ${p.name}` })),
-                ]}
-                defaultValue={filterProduct}
-                onChange={(v) => setFilterProduct(v as string)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="type">Tipe Penyesuaian</Label>
-              <Select
-                options={[
-                  { value: "", label: "Semua" },
-                  { value: "PLUS", label: "Penambahan" },
-                  { value: "MINUS", label: "Pengurangan" },
-                ]}
-                defaultValue={filterType}
-                onChange={(v) => setFilterType(v as string)}
-              />
-            </div>
-
-            <div className="relative">
-              <Label htmlFor="search">Cari</Label>
-              <Search className="absolute left-3 top-[calc(50%+0.75rem)] -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                type="text"
-                placeholder="Nama / kode / catatan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={openAddDrawer}
-            className="md:w-max w-full flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap ml-auto"
-          >
-            <Plus className="w-5 h-5" />
-            Opname Baru
-          </button>
+      {/* Filter Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <div className="relative">
+          <Label>Cari</Label>
+          <Search className="absolute left-3 top-[2.4rem] text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Kode / Nama Produk..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
-
-        {(searchTerm || filterProduct || filterType) && (
-          <button
-            onClick={() => {
-              setSearchTerm("");
-              setFilterProduct("");
-              setFilterType("");
-            }}
-            className="mt-3 text-sm text-green-600 hover:underline"
-          >
-            Reset filter
-          </button>
-        )}
+        <div>
+          <Label>Filter Produk</Label>
+          <Select
+            options={[
+              { value: "", label: "Semua Produk" },
+              ...products.map(p => ({ value: p.id, label: p.name }))
+            ]}
+            onChange={(v) => setFilterProduct(v as string)}
+          />
+        </div>
+        <div>
+          <Label>Tipe</Label>
+          <Select
+            options={[
+              { value: "", label: "Semua" },
+              { value: "PLUS", label: "Penambahan (+)" },
+              { value: "MINUS", label: "Pengurangan (-)" }
+            ]}
+            onChange={(v) => setFilterType(v as string)}
+          />
+        </div>
       </div>
 
-      {/* TABLE */}
-      <ComponentCard title="Riwayat Stok Opname">
+      <ComponentCard title="Riwayat Aktivitas">
         {loading ? (
-          <div className="w-full flex flex-col justify-center items-center pt-10 pb-20">
-            <Loader className="animate-spin w-10 h-10 text-gray-500" />
-            <p className="mt-4 text-gray-500">Memuat data stok opname...</p>
+          <div className="py-20 flex flex-col items-center justify-center">
+            <Loader className="animate-spin text-blue-500 w-10 h-10" />
+            <p className="mt-4 text-gray-400">Sinkronisasi data...</p>
           </div>
         ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Menampilkan {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalItems)} dari {totalItems} data
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-             <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                    <tr className="border-b dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Info Produk</th>
-                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Perubahan Stok</th>
-                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Selisih</th>
-                        <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y dark:divide-gray-700">
-                    {currentData.map((op) => (
-                        <tr key={op.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                        {/* Info Produk & Tanggal */}
-                        <td className="py-3 px-4">
-                            <div className="flex flex-col">
-                            <span className="text-[10px] font-medium text-gray-400 uppercase">{formatDate(op.date)}</span>
-                            <span className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[150px]" title={op.product.name}>
-                                {op.product.name}
-                            </span>
-                            <span className="text-xs text-gray-500">{op.product.code}</span>
-                            </div>
-                        </td>
-
-                        {/* Perubahan Stok (Sebelum -> Sesudah) */}
-                        <td className="py-3 px-4">
-                            <div className="flex items-center gap-2 text-sm">
-                            <span className="text-gray-400 line-through decoration-red-300/50">{op.previousStock}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{op.actualStock}</span>
-                            <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">
-                                {op.product.unit}
-                            </span>
-                            </div>
-                        </td>
-
-                        {/* Selisih dengan Satuan */}
-                        <td className="py-3 px-4 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold ${
-                            op.difference > 0 
-                                ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400" 
-                                : op.difference < 0 
-                                ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" 
-                                : "bg-gray-50 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                            }`}>
-                            {op.difference > 0 ? "+" : ""}{op.difference} {op.product.unit}
-                            </span>
-                        </td>
-
-                        {/* Aksi */}
-                        <td className="py-3 px-4 text-right">
-                            <button
-                            onClick={() => openDetailDrawer(op)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 transition-colors"
-                            >
-                            <Eye className="w-4 h-4" />
-                            </button>
-                        </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-                </div>
-
-              {currentData.length === 0 && (
-                <p className="text-center py-10 text-gray-500">
-                  {searchTerm || filterProduct || filterType
-                    ? "Tidak ditemukan data stok opname dengan filter tersebut."
-                    : "Belum ada riwayat stok opname."}
-                </p>
-              )}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-8">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-4 py-2 rounded-lg ${
-                      currentPage === page
-                        ? "bg-green-600 text-white"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    {page}
-                  </button>
+          <div className="overflow-x-auto rounded-xl">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 text-xs uppercase font-bold">
+                  <th className="px-6 py-4">Waktu & Produk</th>
+                  <th className="px-6 py-4">Sistem → Aktual</th>
+                  <th className="px-6 py-4 text-center">Selisih</th>
+                  <th className="px-6 py-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y dark:divide-gray-800">
+                {currentData.map((op) => (
+                  <tr key={op.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-gray-400 font-bold">{formatDate(op.createdAt)}</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{op.product?.name}</span>
+                        <span className="text-xs text-blue-500 font-medium">{op.product?.code}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 font-mono text-sm">
+                        <span className="text-gray-400">{op.previousStock}</span>
+                        <span className="text-gray-300">→</span>
+                        <span className="font-bold text-gray-800 dark:text-gray-100">{op.actualStock}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                        op.adjustmentType === 'PLUS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {op.adjustmentType === 'PLUS' ? '+' : ''}{op.difference}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => { setSelectedOpname(op); setIsDetailDrawerOpen(true); }} className="p-2 hover:bg-white rounded-full shadow-sm border border-transparent hover:border-gray-200 transition-all text-gray-400 hover:text-blue-600">
+                        <Eye size={18} />
+                      </button>
+                    </td>
+                  </tr>
                 ))}
-
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-          </>
+              </tbody>
+            </table>
+          </div>
         )}
       </ComponentCard>
 
-      {/* DETAIL DRAWER */}
-      {isDetailDrawerOpen && selectedOpname && (
-        <div className="fixed inset-0 z-[999999] overflow-hidden">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDetailDrawerOpen(false)} />
-          <div className="absolute inset-y-0 right-0 w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl">
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-                <h2 className="text-2xl font-bold">Detail Stok Opname</h2>
-                <button onClick={() => setIsDetailDrawerOpen(false)}>
-                  <X className="w-6 h-6" />
-                </button>
+      {/* --- DRAWER: ADD OPNAME --- */}
+      <AnimatePresence>
+        {isAddDrawerOpen && (
+          <div className="fixed inset-0 z-[99999] flex justify-end">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddDrawerOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
+            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="relative w-full max-w-lg bg-white dark:bg-gray-900 h-full shadow-2xl p-8 overflow-y-auto">
+              <div className="flex justify-between items-center mb-10">
+                <h2 className="text-2xl font-black italic tracking-tighter text-gray-900 dark:text-white uppercase">New Stock Audit</h2>
+                <button onClick={() => setIsAddDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X /></button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <form onSubmit={handleSubmitOpname} className="space-y-8">
                 <div>
-                  <Label>Tanggal Opname</Label>
-                  <p className="text-lg font-medium">{formatDate(selectedOpname.date)}</p>
+                  <Label>Pilih Produk</Label>
+                  <Select
+                    options={products.map(p => ({
+                      value: p.id,
+                      label: `${p.name} (Sistem: ${p.stock})`
+                    }))}
+                    onChange={(v) => setSelectedProductId(v as string)}
+                    placeholder="Pilih item..."
+                  />
                 </div>
+
                 <div>
-                  <Label>Produk</Label>
-                  <p className="text-lg font-medium">{selectedOpname.product.name}</p>
-                  <p className="text-sm text-gray-500">{selectedOpname.product.code}</p>
+                  <Label>Jumlah Fisik Terhitung</Label>
+                  <Input
+                    type="number"
+                    value={actualStock}
+                    onChange={(e) => setActualStock(e.target.value)}
+                    placeholder="Masukkan angka real di lapangan"
+                    className="text-2xl font-bold py-6 text-blue-600"
+                  />
                 </div>
+
                 <div>
-                  <Label>Stok Sebelum Opname</Label>
-                  <p className="text-lg">{selectedOpname.previousStock} {selectedOpname.product.unit}</p>
+                  <Label>Alasan / Catatan</Label>
+                  <textarea
+                    className="w-full p-4 rounded-2xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    rows={4}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Contoh: Barang rusak atau bonus supplier..."
+                  />
                 </div>
-                <div>
-                  <Label>Stok Aktual (Hasil Hitung)</Label>
-                  <p className="text-lg">{selectedOpname.actualStock} {selectedOpname.product.unit}</p>
+
+                <div className="pt-10 space-y-3">
+                  <button
+                    disabled={isSubmitting}
+                    className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex justify-center items-center gap-3 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader className="animate-spin" /> : "PROSES SEKARANG"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddDrawerOpen(false)}
+                    className="w-full py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors"
+                  >
+                    Batalkan
+                  </button>
                 </div>
-                <div>
-                  <Label>Selisih</Label>
-                  <p className={`text-xl font-bold ${
-                    selectedOpname.difference > 0 ? "text-green-600" :
-                    selectedOpname.difference < 0 ? "text-red-600" : "text-gray-600"
-                  }`}>
-                    {selectedOpname.difference > 0 ? "+" : ""}
-                    {selectedOpname.difference} {selectedOpname.product.unit}
-                  </p>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL: DETAIL (Menggunakan style blur yang kamu suka) --- */}
+      <AnimatePresence>
+        {isDetailDrawerOpen && selectedOpname && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDetailDrawerOpen(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full border border-white/20">
+              <div className="text-center mb-6">
+                 <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-inner">
+                    <Eye size={32} />
+                 </div>
+                 <h3 className="text-2xl font-bold">Audit Detail</h3>
+                 <p className="text-gray-400 text-sm italic">{selectedOpname.id}</p>
+              </div>
+
+              <div className="space-y-4 bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl mb-8">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Petugas</span>
+                  <span className="font-bold">{selectedOpname.userName}</span>
                 </div>
-                <div>
-                  <Label>Tipe Penyesuaian</Label>
-                  <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-                    selectedOpname.adjustmentType === "PLUS"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                  }`}>
-                    {selectedOpname.adjustmentType === "PLUS" ? "Penambahan" : "Pengurangan"}
+                <div className="flex justify-between border-t dark:border-gray-700 pt-3">
+                  <span className="text-gray-400">Item</span>
+                  <span className="font-bold text-blue-600">{selectedOpname.product?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Selisih Total</span>
+                  <span className={`font-black ${selectedOpname.difference < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {selectedOpname.difference} Item
                   </span>
                 </div>
-                <div>
-                  <Label>Catatan</Label>
-                  <p className="text-lg whitespace-pre-wrap">{selectedOpname.note}</p>
-                </div>
-                <div>
-                  <Label>Dilakukan oleh</Label>
-                  <p className="text-lg">{selectedOpname.user}</p>
+                <div className="border-t dark:border-gray-700 pt-3">
+                  <span className="text-gray-400 block mb-2 text-xs uppercase font-bold">Catatan:</span>
+                  <p className="text-sm leading-relaxed">{selectedOpname.note}</p>
                 </div>
               </div>
-            </div>
+
+              <button
+                onClick={() => setIsDetailDrawerOpen(false)}
+                className="w-full py-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 rounded-2xl font-bold transition-transform active:scale-95"
+              >
+                Tutup Laporan
+              </button>
+            </motion.div>
           </div>
-        </div>
-      )}
-
-      {/* ADD NEW OPNAME DRAWER */}
-      {isAddDrawerOpen && (
-        <div className="fixed inset-0 z-[999999] overflow-hidden">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => {
-              setIsAddDrawerOpen(false);
-              resetForm();
-            }}
-          />
-          <div className="absolute inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl">
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-                <h2 className="text-2xl font-bold">Stok Opname Baru</h2>
-                <button
-                  onClick={() => {
-                    setIsAddDrawerOpen(false);
-                    resetForm();
-                  }}
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                <form onSubmit={handleSubmitOpname} className="space-y-6">
-                  <div>
-                    <Label htmlFor="product">Produk</Label>
-                    <Select
-                      options={products.map(p => ({
-                        value: p.id,
-                        label: `${p.code} - ${p.name} (stok saat ini: ${p.currentStock} ${p.unit})`,
-                      }))}
-                      defaultValue={selectedProductId}
-                      onChange={(v) => setSelectedProductId(v as string)}
-                      placeholder="Pilih produk yang akan diopname"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="actualStock">Jumlah Stok Aktual</Label>
-                    <Input
-                      type="number"
-                      id="actualStock"
-                      min="0"
-                      value={actualStock}
-                      onChange={(e) => setActualStock(e.target.value)}
-                      placeholder="Masukkan jumlah stok hasil hitung fisik"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Bandingkan dengan stok sistem saat ini.
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="note">Catatan / Alasan Selisih</Label>
-                    <textarea
-                      id="note"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
-                      rows={4}
-                      placeholder="Contoh: Hilang karena pencurian, tambahan dari supplier, rusak, dll..."
-                    />
-                  </div>
-
-                  <div className="flex gap-4 pt-8">
-                    <button
-                      type="submit"
-                      className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition"
-                    >
-                      Simpan Stok Opname
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddDrawerOpen(false);
-                        resetForm();
-                      }}
-                      className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-medium rounded-lg transition"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
