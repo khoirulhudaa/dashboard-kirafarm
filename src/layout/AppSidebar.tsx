@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import {
-  BarChart3,
   ChevronDown,
   Home,
   Package,
@@ -58,7 +57,7 @@ const allNavItems: NavItem[] = [
     name: "Inventori",
     subItems: [
       { name: "Daftar Produk", path: "/manajemen-produk" },
-      { name: "Stok Opname", path: "/stok-opname" },
+      // { name: "Stok Opname", path: "/stok-opname" },
       { name: "Kategori", path: "/manajemen-kategori" },
       { name: "Satuan", path: "/manajemen-satuan" },
     ],
@@ -66,16 +65,17 @@ const allNavItems: NavItem[] = [
   {
     icon: <Users className="w-5 h-5" />,
     name: "Manajemen",
+    roles: ["OWNER"],
     subItems: [
-      { name: "Data Pelanggan", path: "/pelanggan" },
+      // { name: "Data Pelanggan", p/th: "/pelanggan" },
       { name: "Data Pegawai", path: "/manajemen-pegawai" },
     ],
   },
-  {
-    icon: <BarChart3 className="w-5 h-5" />,
-    name: "Laporan",
-    path: "/laporan",
-  },
+  // {
+  //   icon: <BarChart3 className="w-5 h-5" />,
+  //   name: "Laporan",
+  //   path: "/laporan",
+  // },
   {
     icon: <UserCircle className="w-5 h-5" />,
     name: "Profil Akun",
@@ -96,14 +96,17 @@ const AppSidebar: React.FC = () => {
 
   const location = useLocation();
   const currentUser = getCurrentUser();
-  const userRoleNormalized = (currentUser?.role || "ADMIN").toUpperCase();
+  const userRoleNormalized = (currentUser?.role || "OWNER").toUpperCase();
 
   const [subMenuHeight, setSubMenuHeight] = useState<any>({});
   const subMenuRefs = useRef<any>({});
   console.log('subMenuHeight', subMenuHeight)
 
   const filteredNavItems = allNavItems.filter((item) => {
+    // Jika item tidak punya batasan role, tampilkan untuk semua
     if (!item.roles) return true;
+
+    // Cek apakah role user saat ini ada di dalam daftar roles yang diizinkan untuk menu ini
     return item.roles.some(
       (allowedRole) => allowedRole.toUpperCase() === userRoleNormalized
     );

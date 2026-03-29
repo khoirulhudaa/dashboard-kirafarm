@@ -1,14 +1,7 @@
 import {
-  ChevronLeft,
-  ChevronRight,
-  Edit,
   Eye,
   Loader,
-  Plus,
-  Search,
-  ToggleLeft,
-  ToggleRight,
-  X,
+  X
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -17,499 +10,220 @@ import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Select from "../../components/form/Select";
 
-interface Employee {
+// 1. Interface Data Seller - DISESUAIKAN DENGAN MODEL & ALIAS
+interface Seller {
   id: string;
-  name: string;
+  userId: string;
+  nama: string;
+  nik: string;
+  namaToko: string;
+  slug: string;
   email: string;
-  phone: string;
-  role: "ADMIN" | "MANAGER" | "STAFF" | "WAREHOUSE";
-  status: "ACTIVE" | "INACTIVE";
-  joinDate: string; // ISO date
-  address?: string;
+  whatsapp: string;
+  alamat: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  fotoKtp: string;        // Sesuai Model
+  fotoNpwp: string;  // Sesuai Model
+  fotoProduk: string;      // Sesuai Model
+  bank: string;
+  rekening: string;
+  namaRekening: string;
+  createdAt: string;
+  account?: {             // Relasi as: 'account'
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
-const dummyEmployees: Employee[] = [
-  {
-    id: "1",
-    name: "Ahmad Fauzi",
-    email: "ahmad@agromart.id",
-    phone: "081234567890",
-    role: "ADMIN",
-    status: "ACTIVE",
-    joinDate: "2023-01-15T00:00:00.000Z",
-    address: "Jl. Raya Bogor No. 45, Jakarta",
-  },
-  {
-    id: "2",
-    name: "Siti Nurhaliza",
-    email: "siti@agromart.id",
-    phone: "082198765432",
-    role: "MANAGER",
-    status: "ACTIVE",
-    joinDate: "2023-06-20T00:00:00.000Z",
-    address: "Perumahan Green Garden Blok A3, Bandung",
-  },
-  {
-    id: "3",
-    name: "Budi Santoso",
-    email: "budi@agromart.id",
-    phone: "085712345678",
-    role: "STAFF",
-    status: "ACTIVE",
-    joinDate: "2024-02-10T00:00:00.000Z",
-    address: "Jl. Sudirman Kav. 10, Jakarta",
-  },
-  {
-    id: "4",
-    name: "Rina Wulandari",
-    email: "rina@agromart.id",
-    phone: "089876543210",
-    role: "WAREHOUSE",
-    status: "ACTIVE",
-    joinDate: "2024-08-05T00:00:00.000Z",
-    address: "Gudang AgroMart, Cikarang",
-  },
-  {
-    id: "5",
-    name: "Dedi Kurniawan",
-    email: "dedi@agromart.id",
-    phone: "081398765432",
-    role: "STAFF",
-    status: "INACTIVE",
-    joinDate: "2023-11-01T00:00:00.000Z",
-    address: "Jl. Thamrin No. 22, Jakarta",
-  },
-  {
-    id: "6",
-    name: "Larasati Dewi",
-    email: "laras@agromart.id",
-    phone: "087712345678",
-    role: "MANAGER",
-    status: "ACTIVE",
-    joinDate: "2024-03-15T00:00:00.000Z",
-  },
-];
-
-const formatDate = (isoString: string): string => {
-  return new Date(isoString).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-};
-
-const roleLabels: Record<Employee["role"], string> = {
-  ADMIN: "Administrator",
-  MANAGER: "Manajer",
-  STAFF: "Staf",
-  WAREHOUSE: "Gudang",
-};
-
-export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+export default function SellerManagement() {
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Drawer
-  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
 
-  // Filter & Search
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Form
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<Employee["role"]>("STAFF");
-  const [address, setAddress] = useState("");
+  // 2. Fetch Data dari endpoint Admin
+  const fetchSellers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("accessToken");
+      // Gunakan route admin list
+      const response = await fetch("https://be-kirafarm.kiraproject.id/api/seller", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSellers(result.data);
+      } else {
+        toast.error(result.message || "Gagal memuat data");
+      }
+    } catch (error) {
+      toast.error("Kesalahan koneksi ke server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setEmployees(dummyEmployees);
-    setLoading(false);
+    fetchSellers();
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterRole, filterStatus]);
+  // 3. Update Status (Approve/Reject)
+  const handleUpdateStatus = async (id: string, newStatus: "APPROVED" | "REJECTED") => {
+    if (!confirm(`Yakin ingin ${newStatus === "APPROVED" ? "menyetujui" : "menolak"} seller ini?`)) return;
 
-  const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPhone("");
-    setRole("STAFF");
-    setAddress("");
-    setEditingEmployee(null);
-  };
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem("accessToken");
+      // Gunakan route admin status
+      const response = await fetch(`https://be-kirafarm.kiraproject.id/api/seller/status/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-  const openEditDrawer = (employee?: Employee) => {
-    if (employee) {
-      setEditingEmployee(employee);
-      setName(employee.name);
-      setEmail(employee.email);
-      setPhone(employee.phone);
-      setRole(employee.role);
-      setAddress(employee.address || "");
-    } else {
-      resetForm();
+      const result = await response.json();
+      if (result.success) {
+        toast.success(result.message);
+        setIsDetailDrawerOpen(false);
+        fetchSellers();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error("Gagal memproses permintaan");
+    } finally {
+      setActionLoading(false);
     }
-    setIsEditDrawerOpen(true);
   };
 
-  const openDetailDrawer = (employee: Employee) => {
-    setSelectedEmployee(employee);
-    setIsDetailDrawerOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim() || !email.trim() || !phone.trim()) {
-      toast.error("Nama, email, dan nomor telepon wajib diisi!");
-      return;
-    }
-
-    const updatedEmployee: Employee = {
-      id: editingEmployee?.id || Date.now().toString(),
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      role,
-      status: editingEmployee?.status || "ACTIVE",
-      joinDate: editingEmployee?.joinDate || new Date().toISOString(),
-      address: address.trim() || undefined,
-    };
-
-    if (editingEmployee) {
-      setEmployees(employees.map(emp => emp.id === editingEmployee.id ? updatedEmployee : emp));
-      toast.success("Data pegawai berhasil diperbarui");
-    } else {
-      setEmployees([updatedEmployee, ...employees]);
-      toast.success("Pegawai baru berhasil ditambahkan");
-    }
-
-    setIsEditDrawerOpen(false);
-    resetForm();
-  };
-
-  const handleToggleStatus = (employee: Employee) => {
-    const action = employee.status === "ACTIVE" ? "nonaktifkan" : "aktifkan";
-    if (!confirm(`Apakah Anda yakin ingin ${action} pegawai "${employee.name}"?`)) return;
-
-    setEmployees(employees.map(emp =>
-      emp.id === employee.id
-        ? { ...emp, status: employee.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }
-        : emp
-    ));
-    toast.success(`Pegawai berhasil ${employee.status === "ACTIVE" ? "dinonaktifkan" : "diaktifkan"}`);
-  };
-
-  // Filtering
-  const filteredEmployees = employees.filter((emp) => {
+  const filteredSellers = sellers.filter((s) => {
+    const searchStr = searchTerm.toLowerCase();
     const matchesSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.phone.includes(searchTerm);
-
-    const matchesRole = !filterRole || emp.role === filterRole;
-    const matchesStatus = !filterStatus || emp.status === filterStatus;
-
-    return matchesSearch && matchesRole && matchesStatus;
+      s.nama.toLowerCase().includes(searchStr) ||
+      s.namaToko.toLowerCase().includes(searchStr) ||
+      s.account?.name.toLowerCase().includes(searchStr);
+    const matchesStatus = !filterStatus || s.status === filterStatus;
+    return matchesSearch && matchesStatus;
   });
 
-  const totalItems = filteredEmployees.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const currentData = filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const currentData = filteredSellers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // const totalPages = Math.ceil(filteredSellers.length / itemsPerPage);
 
   return (
     <div className="p-0 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
-        Manajemen Pegawai & Admin
-      </h1>
-
-      {/* Filter & Search */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-          <div className="grid md:grid-cols-2 grid-cols-2 gap-4 w-full">
-            <div className="w-full">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                options={[
-                  { value: "", label: "Semua Role" },
-                  { value: "ADMIN", label: "Administrator" },
-                  { value: "MANAGER", label: "Manajer" },
-                  { value: "STAFF", label: "Staf" },
-                  { value: "WAREHOUSE", label: "Gudang" },
-                ]}
-                defaultValue={filterRole}
-                className="flex-1"
-                onChange={(v) => setFilterRole(v as any)}
-                placeholder="Pilih role"
-              />
-            </div>
-            <div className="w-full">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                options={[
-                  { value: "", label: "Semua Status" },
-                  { value: "ACTIVE", label: "Aktif" },
-                  { value: "INACTIVE", label: "Tidak Aktif" },
-                ]}
-                defaultValue={filterStatus}
-                onChange={(v) => setFilterStatus(v as any)}
-                placeholder="Pilih status"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md: flex-col sm:flex-row gap-4 w-full">
-            <div className="relative flex-1">
-              <Label>Cari Pegawai</Label>
-              <Search className="absolute left-3 top-[calc(50%+0.75rem)] -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                placeholder="Nama, email, atau nomor telepon..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div>
-              <Label className="opacity-0">Tambah</Label>
-              <button
-                onClick={() => openEditDrawer()}
-                className="w-full flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition whitespace-nowrap"
-              >
-                <Plus className="w-5 h-5" />
-                Tambah Pegawai
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {(searchTerm || filterRole || filterStatus) && (
-          <div className="mt-4">
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setFilterRole("");
-                setFilterStatus("");
-              }}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Reset semua filter
-            </button>
-          </div>
-        )}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Verifikasi Seller</h1>
+        <button onClick={fetchSellers} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">Refresh Data</button>
       </div>
 
-      {/* Table */}
-      <ComponentCard title="Daftar Pegawai">
+      <div className="mb-8 grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 relative">
+          <Label>Cari Seller / Akun</Label>
+          <Input 
+            placeholder="Cari toko atau nama pemilik..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+          />
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select
+            options={[
+              { value: "", label: "Semua" },
+              { value: "PENDING", label: "Menunggu" },
+              { value: "APPROVED", label: "Disetujui" },
+              { value: "REJECTED", label: "Ditolak" },
+            ]}
+            onChange={(v) => setFilterStatus(v as string)}
+          />
+        </div>
+      </div>
+
+      <ComponentCard title="Daftar Pengajuan">
         {loading ? (
-          <div className="flex justify-center items-center py-10">
-            <Loader className="animate-spin w-10 h-10 text-gray-500" />
-          </div>
+          <div className="flex justify-center py-10"><Loader className="animate-spin" /></div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Nama</th>
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Email & Telepon</th>
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Role</th>
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Bergabung</th>
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Status</th>
-                    <th className="py-4 px-6 uppercase text-xs font-medium text-gray-700 dark:text-gray-300">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentData.map((emp) => (
-                    <tr key={emp.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="py-4 px-6 dark:text-gray-300 font-medium">{emp.name}</td>
-                      <td className="py-4 px-6 dark:text-gray-300">
-                        <div className="text-sm">
-                          <p>{emp.email}</p>
-                          <p className="text-gray-500">{emp.phone}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 dark:text-gray-300">
-                        <span className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                          {roleLabels[emp.role]}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 dark:text-gray-300 text-sm">{formatDate(emp.joinDate)}</td>
-                      <td className="py-4 px-6 dark:text-gray-300">
-                        <span className={`px-3 py-1 text-xs rounded-full ${
-                          emp.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                        }`}>
-                          {emp.status === "ACTIVE" ? "Aktif" : "Tidak Aktif"}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 dark:text-gray-300">
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => openDetailDrawer(emp)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                          <button onClick={() => openEditDrawer(emp)} className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition">
-                            <Edit className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          </button>
-                          {emp.status === "ACTIVE" ? (
-                            <button onClick={() => handleToggleStatus(emp)} className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900 rounded transition">
-                              <ToggleRight className="w-4 h-4 text-orange-600" />
-                            </button>
-                          ) : (
-                            <button onClick={() => handleToggleStatus(emp)} className="p-2 hover:bg-green-100 dark:hover:bg-green-900 rounded transition">
-                              <ToggleLeft className="w-4 h-4 text-green-600" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {currentData.length === 0 && (
-                <p className="text-center py-10 text-gray-500">
-                  {searchTerm || filterRole || filterStatus
-                    ? "Tidak ditemukan pegawai dengan filter tersebut."
-                    : "Belum ada data pegawai."}
-                </p>
-              )}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-6">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}
-                  className="p-2 rounded hover:bg-gray-100 disabled:opacity-50">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button key={i+1} onClick={() => setCurrentPage(i+1)}
-                    className={`px-4 py-2 rounded ${currentPage === i+1 ? "bg-blue-600 text-white" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    {i+1}
-                  </button>
-                ))}
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}
-                  className="p-2 rounded hover:bg-gray-100 disabled:opacity-50">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-          </>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="p-4 text-xs font-bold uppercase">Toko</th>
+                <th className="p-4 text-xs font-bold uppercase">Pemilik (Account)</th>
+                <th className="p-4 text-xs font-bold uppercase">Status</th>
+                <th className="p-4 text-xs font-bold uppercase text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentData.map((s) => (
+                <tr key={s.id} className="border-b hover:bg-slate-50 transition">
+                  <td className="p-4">
+                    <p className="font-bold">{s.namaToko}</p>
+                    <p className="text-xs text-slate-400">@{s.slug}</p>
+                  </td>
+                  <td className="p-4">
+                    <p className="text-sm">{s.account?.name || s.nama}</p>
+                    <p className="text-xs text-slate-400">{s.account?.email}</p>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 text-[10px] font-bold rounded-full ${
+                      s.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 
+                      s.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                    }`}>{s.status}</span>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button onClick={() => { setSelectedSeller(s); setIsDetailDrawerOpen(true); }} className="p-2 text-blue-600 bg-blue-50 rounded-lg"><Eye size={18} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </ComponentCard>
 
-      {/* Detail Drawer */}
-      {isDetailDrawerOpen && selectedEmployee && (
-        <div className="fixed inset-0 z-[999999] bg-black/60 flex justify-end">
-          <div className="w-full max-w-md bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-xl">
-            <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold dark:text-gray-300">Detail Pegawai</h2>
-              <button onClick={() => setIsDetailDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded">
-                <X className="w-6 h-6 dark:text-gray-300" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              <div><Label>Nama Lengkap</Label><p className="text-lg dark:text-gray-300 font-medium">{selectedEmployee.name}</p></div>
-              <div><Label>Email</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.email}</p></div>
-              <div><Label>Telepon</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.phone}</p></div>
-              <div><Label>Role</Label>
-                <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                  {roleLabels[selectedEmployee.role]}
-                </span>
-              </div>
-              <div><Label>Tanggal Bergabung</Label><p className="text-lg dark:text-gray-300">{formatDate(selectedEmployee.joinDate)}</p></div>
-              {selectedEmployee.address && (
-                <div><Label>Alamat</Label><p className="text-lg dark:text-gray-300">{selectedEmployee.address}</p></div>
-              )}
-              <div><Label>Status</Label>
-                <span className={`px-3 py-1 text-sm rounded-full ${
-                  selectedEmployee.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}>
-                  {selectedEmployee.status === "ACTIVE" ? "Aktif" : "Tidak Aktif"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit / Add Drawer */}
-      {isEditDrawerOpen && (
-        <div className="fixed inset-0 z-[999999] bg-black/60 flex justify-end">
-          <div className="w-full max-w-lg bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-xl">
-            <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">{editingEmployee ? "Edit" : "Tambah"} Pegawai</h2>
-              <button onClick={() => { setIsEditDrawerOpen(false); resetForm(); }} className="p-2 hover:bg-gray-100 rounded">
-                <X className="w-6 h-6" />
-              </button>
+      {/* DETAIL DRAWER */}
+      {isDetailDrawerOpen && selectedSeller && (
+        <div className="fixed inset-0 z-[999999999] flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setIsDetailDrawerOpen(false)} />
+          <div className="relative w-full max-w-xl bg-white h-full shadow-2xl overflow-y-auto p-8 space-y-8 animate-in slide-in-from-right">
+            <div className="flex justify-between items-center border-b pb-4">
+              <h2 className="text-xl font-black">Detail Verifikasi</h2>
+              <button onClick={() => setIsDetailDrawerOpen(false)}><X /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* FOTO DOKUMEN - DISESUAIKAN NAMA PROPERTI */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Nama Lengkap</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                <Label>Foto KTP</Label>
+                <img src={selectedSeller.fotoKtp} className="rounded-xl border h-40 w-full object-cover" />
               </div>
-
               <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Label>Foto NPWP</Label>
+                <img src={selectedSeller.fotoNpwp} className="rounded-xl border h-40 w-full object-cover" />
               </div>
+            </div>
 
-              <div>
-                <Label htmlFor="phone">Nomor Telepon</Label>
-                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-              </div>
+            <div className="bg-slate-50 p-4 rounded-xl space-y-2">
+              <p className="text-xs font-bold text-slate-400 uppercase">Rekening Tujuan</p>
+              <p className="text-lg font-black">{selectedSeller.rekening} ({selectedSeller.bank})</p>
+              <p className="italic text-slate-600">a.n {selectedSeller.namaRekening}</p>
+            </div>
 
-              <div>
-                <Label htmlFor="role">Role</Label>
-                <Select
-                  options={[
-                    { value: "ADMIN", label: "Administrator" },
-                    { value: "MANAGER", label: "Manajer" },
-                    { value: "STAFF", label: "Staf" },
-                    { value: "WAREHOUSE", label: "Gudang" },
-                  ]}
-                  defaultValue={role}
-                  onChange={(v) => setRole(v as Employee["role"])}
-                />
+            {selectedSeller.status === 'PENDING' && (
+              <div className="flex gap-4">
+                <button disabled={actionLoading} onClick={() => handleUpdateStatus(selectedSeller.id, 'REJECTED')} className="flex-1 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl">Tolak</button>
+                <button disabled={actionLoading} onClick={() => handleUpdateStatus(selectedSeller.id, 'APPROVED')} className="flex-1 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-200">Setujui</button>
               </div>
-
-              <div>
-                <Label htmlFor="address">Alamat (Opsional)</Label>
-                <textarea
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  rows={3}
-                  className="w-full p-3 border rounded-lg dark:bg-gray-800"
-                  placeholder="Masukkan alamat lengkap..."
-                />
-              </div>
-
-              <div className="flex gap-4 pt-6">
-                <button type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
-                  Simpan
-                </button>
-                <button type="button" onClick={() => { setIsEditDrawerOpen(false); resetForm(); }}
-                  className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 rounded-lg">
-                  Batal
-                </button>
-              </div>
-            </form>
+            )}
           </div>
         </div>
       )}

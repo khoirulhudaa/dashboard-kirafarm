@@ -2,7 +2,7 @@ import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 
 interface Option {
-  value: string;
+  value: any;
   label: string;
 }
 
@@ -11,7 +11,7 @@ interface SelectProps {
   placeholder?: string;
   onChange: (value: string) => void;
   className?: string;
-  defaultValue?: string;
+  defaultValue?: any;
   required?: boolean;       
 }
 

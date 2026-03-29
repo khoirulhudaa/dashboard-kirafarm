@@ -183,46 +183,9 @@ const AppHeader: React.FC = () => {
           <div className="flex items-center gap-4">
             <ThemeToggleButton />
 
-             <div className="relative user-dropdown">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 pl-3 py-2 transition"
-                >
-                  <UserCircle2 className="w-8 h-8 text-gray-500 dark:text-gray-400" />
-                  <div className="hidden sm:block text-left">
-                    <p className="font-semibold text-gray-900 dark:text-white">{'Reza Aditya'}</p>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {/* Dropdown Menu */}
-                {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                    {/* <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p> */}
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        navigate("/profile"); // Ganti dengan route profile kamu
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <User className="w-4 h-4" />
-                      Profile Akun
-                    </button>
-                    <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Keluar  
-                    </button>
-                  </div>
-                )}
-              </div>
 
             {/* Dropdown User */}
-            {isLoggedIn && user && (
+            {isLoggedIn && user ? (
               <div className="relative user-dropdown">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -260,6 +223,14 @@ const AppHeader: React.FC = () => {
                   </div>
                 )}
               </div>
+            ): (
+              <button
+                onClick={() => navigate("/signin")}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+              >
+                <User className="w-4 h-4" />
+                Masuk
+              </button>
             )}
           </div>
         </div>

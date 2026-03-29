@@ -7,7 +7,7 @@ import Button from "../ui/button/Button";
 import { toast } from "sonner";
 
 // Ganti dengan URL backend kamu (local atau production)
-const API_BASE_URL = "http://localhost:5000/api"; // Ubah ke domain production nanti
+const API_BASE_URL = "https://be-kirafarm.kiraproject.id/api"; // Ubah ke domain production nanti
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -144,7 +144,7 @@ export default function SignInForm() {
               Belum punya akun?{" "}
               <button
                 type="button"
-                onClick={() => navigate("/register")}
+                onClick={() => navigate("/signup")}
                 className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
               >
                 Daftar di sini

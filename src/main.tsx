@@ -13,7 +13,7 @@ createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <AppWrapper>
         <Toaster 
-          position="bottom-right" 
+          position="top-right" 
           richColors 
           closeButton 
           expand 
