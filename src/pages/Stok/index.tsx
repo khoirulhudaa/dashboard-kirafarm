@@ -1,16 +1,13 @@
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Loader,
   Plus,
   Search,
-  X,
-  Trash2,
+  X
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import ComponentCard from "../../components/common/ComponentCard";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
@@ -44,45 +41,81 @@ const formatDate = (isoString: string): string => {
   });
 };
 
+
+
 export default function StockOpnamePage() {
   const [opnames, setOpnames] = useState<StockOpname[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   // Drawer & Modal states
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [selectedOpname, setSelectedOpname] = useState<StockOpname | null>(null);
-
+  
   // Form states
   const [selectedProductId, setSelectedProductId] = useState("");
   const [actualStock, setActualStock] = useState("");
   const [note, setNote] = useState("");
-
+  
   // Filter & Pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
   const [filterType, setFilterType] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  const BASE_URL = "https://be-kirafarm.kiraproject.id";
+
+  const getSellerId = () => {
+    const userRaw = localStorage.getItem("user");
+    if (userRaw) {
+      const userData = JSON.parse(userRaw);
+      return userData?.seller?.id; // Sesuai struktur user.seller.id
+    }
+    return null;
+  };
 
   // --- Fetch Data ---
   const fetchData = async () => {
     setLoading(true);
+    const token = localStorage.getItem("accessToken");
+    const sellerId = getSellerId();
+
+    if (!sellerId) {
+      toast.error("Data seller tidak ditemukan, silakan login ulang");
+      setLoading(false);
+      return;
+    }
+
     try {
       const [prodRes, opnRes] = await Promise.all([
-        fetch("/api/products/my-products"),
-        fetch("/api/stock-opname")
+        // Tambahkan ?sellerId=... pada URL produk
+        fetch(`${BASE_URL}/api/products/my-products?sellerId=${sellerId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }),
+        fetch(`${BASE_URL}/api/stock-opname`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
       ]);
 
       const prodData = await prodRes.json();
       const opnData = await opnRes.json();
 
+      console.log('prodData', prodData)
+      console.log('opnData', opnData)
+
       if (prodData.success) setProducts(prodData.data);
       if (opnData.success) setOpnames(opnData.data);
     } catch (error) {
-      toast.error("Gagal terhubung ke server");
+      toast.error("Gagal sinkronisasi data");
     } finally {
       setLoading(false);
     }
@@ -101,18 +134,47 @@ export default function StockOpnamePage() {
 
   const handleSubmitOpname = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Validasi Input Dasar
     if (!selectedProductId || !actualStock) {
       toast.error("Produk dan stok aktual wajib diisi!");
       return;
     }
 
-    setIsSubmitting(true);
+    // 2. Ambil Data dari LocalStorage
+    const token = localStorage.getItem("accessToken");
+    const userRaw = localStorage.getItem("user");
+    
+    let sellerId = "";
     try {
-      const response = await fetch("/api/stock-opname", {
+      if (userRaw) {
+        const userData = JSON.parse(userRaw);
+        sellerId = userData?.seller?.id || ""; // Mengambil user.seller.id
+      }
+    } catch (err) {
+      console.error("Gagal parse data user", err);
+    }
+
+    // 3. Validasi Keberadaan Token & SellerId
+    if (!token || !sellerId) {
+      toast.error("Sesi habis atau data seller tidak valid. Silakan login ulang.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const BASE_URL = "https://be-kirafarm.kiraproject.id";
+
+      const response = await fetch(`${BASE_URL}/api/stock-opname`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Kirim Token di Header
+        },
         body: JSON.stringify({
           productId: selectedProductId,
+          sellerId: sellerId,        // Kirim sellerId di Body
           actualStock: Number(actualStock),
           note: note || "-",
         }),
@@ -122,18 +184,23 @@ export default function StockOpnamePage() {
 
       if (result.success) {
         toast.success("Stok opname berhasil disimpan");
+        
+        // Update state lokal agar tabel langsung terupdate
         setOpnames([result.data, ...opnames]);
-        // Update stok produk lokal agar sinkron
+        
+        // Update stok di list produk agar sinkron dengan angka terbaru
         setProducts(products.map(p => 
           p.id === selectedProductId ? { ...p, stock: Number(actualStock) } : p
         ));
+
         setIsAddDrawerOpen(false);
         resetForm();
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Gagal menyimpan data");
       }
     } catch (error) {
-      toast.error("Terjadi kesalahan sistem");
+      console.error("Submit Error:", error);
+      toast.error("Terjadi kesalahan sistem atau koneksi");
     } finally {
       setIsSubmitting(false);
     }
